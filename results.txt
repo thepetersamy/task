@@ -1,0 +1,151 @@
+Task 1:
+
+logs have been parsed and saved to parsed_logs.csv
+
+top 5 IPs by request count:
+client_ip
+221.34.171.155    383
+145.98.68.30      380
+110.105.174.63    361
+24.74.238.114     355
+32.90.145.204     354
+Name: count, dtype: int64
+
+47.29% of requests returned 4xx or 5xx status codes.
+
+Average bytes sent for GET requests: 2537.31
+
+------------------------------------------------------
+Task 3:
+
+Total Suspicious IPs Detected: 8
+Top 5 Offending IPs:
+IP Address           Total Requests  Error Responses Sensitive Access Rate Limited
+24.74.238.114        355             248             355             114
+221.34.171.155       383             244             383             121
+145.98.68.30         380             241             380             106
+110.105.174.63       361             239             361             110
+32.90.145.204        354             236             354             102
+
+IPs that were rate limited (received status code 429):
+49.217.128.165
+24.74.238.114
+110.105.174.63
+49.17.221.77
+32.90.145.204
+188.230.178.192
+221.34.171.155
+145.98.68.30
+
+
+------------------------------------------------------
+Task 4:
+
+22|905.177514792899
+
+=============================
+
+119.103.226.136|358
+122.157.29.219|363
+
+=============================
+
+10719865
+
+
+###################################################################
+
+A short write-up (1-2 pages) covering:
+
+Bug fixes for Task 2:
+
+my notes to understand:
+
+by reading the readme file to understand what this script should do:
+the script should find if errors excedd 10% in a 5min window,
+this should be implemeted using a sliding window algorithm
+
+now by taking a look and running to check for syntax errors (to begin with):
+    
+first fix is to convert the status code to an integer, as it is a string in the log file, this was giving a syntax error.
+
+
+second thing im going to do is inspect the regex, print it, and check its size, after processing it, it seems that the logs shrink! regex not matching correctly, regex modified to match correctly
+
+third im going to check the results to get an idea what is the current situation: seems like something wrong is going on as values smaller than 10% are being flagged as errors.
+
+
+now im going to map out the normal sliding window algorithm that should be implemented in this sitiuation and compare it with what is happening
+
+WHAT SHOULD HAPPEN:
+this should use a sliding window in terms of time (5 minutes), but the number of log entries in that window can vary depending on traffic
+Window size: Fixed in time (5 minutes)
+Window content: Variable in number of log entries
+
+WHAT IS ACTUALLY HAPPENING:
+Not a True Sliding Window
+The code uses a fixed window that resets every time the time difference exceeds 5 minutes.
+This creates non-overlapping windows, not a sliding window.
+As a result, it misses spikes in error rates that occur between window boundaries.
+
+
+if time_diff > window_size:
+    
+    current_window_start = timestamp
+
+
+if time_diff > window_size: checks whether more than 5 minutes have passed since the window started.
+If so, it:
+
+Calculates the error rate for the current window.
+Resets the window to start from the current log's timestamp.   
+
+This logic assumes that each window starts when the first log in it appears, and it waits until 5 minutes have passed before evaluating the window. This creates non-overlapping, fixed windows.
+
+
+
+I need to implement a rolling window that:
+
+Always includes logs from the last 5 minutes relative to the current log.
+Continuously updates the window by removing old logs and adding new ones.
+
+
+upon further inspection of the logs, it appears that the logs are not sorted by time
+
+so sorted logs first based on timestamp and checked that they are really sorted
+
+wrote a sliding window algorithm to check for errors inside every window of 5mins
+
+this in my opinion is the correct way to approach even though errors are really a lot!
+
+this makes the alerts spammy as there are a lot of alerts!
+
+also note that this will only work for the given time zone which is the only one present in the logs
+
+round output to 2 decimal places
+
+
+-------------------------------------------------------------------------
+
+Explanation of attack detection script (Task 3).
+
+using the same regex pattern created in task 1,
+
+checking the following:
+ip_requests > 100  
+ip_errors > 50 
+ip_sensitive_access > 50
+ip_rate_limited > 0
+
+
+
+
+
+-------------------------------------------------------------------------
+
+Optional CDN optimization recommendation (Task 5).
+
+Implement stricter rate limiting and caching at the CDN edge for high traffic requests like /login and /api.
+This will reduce origin server load and improve response times for real users.
+
+Implement bot detection techniques like CAPTCHAs at the CDN level. This will reduce the load from abusive or automated traffic and improve response times for legitimate users, especially on high-traffic endpoints like /login.
